@@ -21,7 +21,6 @@ const buildApp = () => {
 		trustProxy: true,
 	});
 
-	// Global decorators / config
 	app.decorate('config', {
 		binance: {
 			baseURL: process.env.BINANCE_BASE_URL || 'https://api.binance.com',
@@ -37,16 +36,13 @@ const buildApp = () => {
 	return app;
 };
 
-async function start() {
-	const app = buildApp();
-
-	// Plugins
+// Register all plugins and routes (separated from build so tests can reuse)
+async function registerApp(app) {
 	await app.register(sensible);
 	await app.register(helmet, { contentSecurityPolicy: false });
 	await app.register(cors, { origin: true, credentials: true });
 	await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
 
-	// Swagger
 	await app.register(swagger, {
 		openapi: {
 			info: {
@@ -72,7 +68,6 @@ async function start() {
 		uiConfig: { docExpansion: 'list', deepLinking: false },
 	});
 
-	// Internal plugins and routes
 	await app.register(require('./src/plugins/binanceClient'));
 	await app.register(require('./src/plugins/errorHandling'));
 
@@ -82,7 +77,6 @@ async function start() {
 	await app.register(require('./src/routes/trade'), { prefix: '/api/trade' });
 	await app.register(require('./src/routes/userStream'), { prefix: '/api/user-stream' });
 
-	// Root
 	app.get('/', {
 		schema: {
 			tags: ['meta'],
@@ -95,6 +89,13 @@ async function start() {
 			},
 		},
 	}, async () => ({ name: 'binance-service', status: 'ok' }));
+
+	return app;
+}
+
+async function start() {
+	const app = buildApp();
+	await registerApp(app);
 
 	const { port, host } = app.config.server;
 	try {
@@ -111,4 +112,4 @@ if (require.main === module) {
 	start();
 }
 
-module.exports = { buildApp };
+module.exports = { buildApp, registerApp };

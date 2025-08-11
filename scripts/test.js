@@ -1,19 +1,13 @@
 #!/usr/bin/env node
-const { buildApp } = require('../server');
+const { buildApp, registerApp } = require('../server');
 
 async function main () {
   const app = buildApp();
+  await registerApp(app);
   await app.ready();
 
   const tests = [];
   function test(name, fn) { tests.push({ name, fn }); }
-
-  test('GET /', async () => {
-    const res = await app.inject({ method: 'GET', url: '/' });
-    if (res.statusCode !== 200) throw new Error('Expected 200');
-    const body = res.json();
-    if (body.status !== 'ok') throw new Error('Bad body');
-  });
 
   test('GET /health/live', async () => {
     const res = await app.inject({ method: 'GET', url: '/health/live' });

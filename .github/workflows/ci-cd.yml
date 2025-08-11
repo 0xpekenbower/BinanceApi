@@ -53,11 +53,8 @@ jobs:
       - name: Integration tests
         env:
           PORT: ${{ env.TEST_PORT }}
-        run: bash scripts/test-integration.sh
-      - if: failure()
-        run: docker logs ${IMAGE_NAME}-test || true
-      - if: always()
-        run: docker stop ${IMAGE_NAME}-test 2>/dev/null || true
+          CONTAINER_NAME: ${IMAGE_NAME}-test
+        run: bash scripts/test-integration.sh || (docker logs ${IMAGE_NAME}-test || true; exit 1)
       - if: always()
         run: docker image rm ${IMAGE_NAME}:${{ github.sha }} 2>/dev/null || true
 
