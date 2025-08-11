@@ -1,0 +1,226 @@
+{
+  "info": {
+    "name": "Binance Fastify Service",
+    "description": "Fastify service integrating Binance REST API (Market, Trading, Account, User Data Streams).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Liveness check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/health/live"
+      }
+    },
+    {
+      "name": "Readiness check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/health/ready"
+      }
+    },
+    {
+      "name": "Test connectivity to the Rest API.",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/market/ping"
+      }
+    },
+    {
+      "name": "Current server time.",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/market/time"
+      }
+    },
+    {
+      "name": "Exchange information.",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/market/exchangeInfo"
+      }
+    },
+    {
+      "name": "Order book (depth).",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/market/depth"
+      }
+    },
+    {
+      "name": "Recent trades.",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/market/trades"
+      }
+    },
+    {
+      "name": "Kline/candlestick data.",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/market/klines"
+      }
+    },
+    {
+      "name": "Account information (SIGNED).",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-MBX-APIKEY",
+            "value": "{{BINANCE_API_KEY}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/account/info"
+      }
+    },
+    {
+      "name": "Account status (SIGNED).",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-MBX-APIKEY",
+            "value": "{{BINANCE_API_KEY}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/account/status"
+      }
+    },
+    {
+      "name": "API trading status (SIGNED).",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-MBX-APIKEY",
+            "value": "{{BINANCE_API_KEY}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/account/apiTradingStatus"
+      }
+    },
+    {
+      "name": "Create a new order (SIGNED).",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-MBX-APIKEY",
+            "value": "{{BINANCE_API_KEY}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/trade/order"
+      }
+    },
+    {
+      "name": "Query order (SIGNED).",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-MBX-APIKEY",
+            "value": "{{BINANCE_API_KEY}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/trade/order"
+      }
+    },
+    {
+      "name": "Cancel order (SIGNED).",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "X-MBX-APIKEY",
+            "value": "{{BINANCE_API_KEY}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/trade/order"
+      }
+    },
+    {
+      "name": "Test new order (SIGNED).",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-MBX-APIKEY",
+            "value": "{{BINANCE_API_KEY}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/trade/order/test"
+      }
+    },
+    {
+      "name": "Current open orders (SIGNED).",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-MBX-APIKEY",
+            "value": "{{BINANCE_API_KEY}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/trade/openOrders"
+      }
+    },
+    {
+      "name": "Create a listen key (SIGNED).",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-MBX-APIKEY",
+            "value": "{{BINANCE_API_KEY}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/user-stream/listenKey"
+      }
+    },
+    {
+      "name": "Keepalive a listen key (SIGNED).",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "X-MBX-APIKEY",
+            "value": "{{BINANCE_API_KEY}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/user-stream/listenKey"
+      }
+    },
+    {
+      "name": "Close a listen key (SIGNED).",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "X-MBX-APIKEY",
+            "value": "{{BINANCE_API_KEY}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/user-stream/listenKey"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "BINANCE_API_KEY",
+      "value": ""
+    }
+  ]
+}
