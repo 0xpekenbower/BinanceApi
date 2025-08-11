@@ -36,13 +36,10 @@ async function main() {
   await app.ready();
   const openapi = app.swagger();
 
-  // Write OpenAPI
   const outDir = path.join(__dirname, '../docs');
   fs.mkdirSync(outDir, { recursive: true });
   const openapiPath = path.join(outDir, 'openapi.json');
   fs.writeFileSync(openapiPath, JSON.stringify(openapi, null, 2));
-
-  // Generate a Postman collection from OpenAPI
   const collection = openapiToPostman(openapi);
   const postmanPath = path.join(outDir, 'postman-collection.json');
   fs.writeFileSync(postmanPath, JSON.stringify(collection, null, 2));

@@ -2,7 +2,7 @@
   "name": "account",
   "version": "1.0.0",
   "description": "Fastify-based Binance integration service (market data, trading, account, user streams) with Swagger and Postman export.",
-  "author": "",
+  "author": "0xpekenbower",
   "license": "MIT",
   "type": "commonjs",
   "main": "server.js",
@@ -10,10 +10,11 @@
     "start": "node server.js",
     "dev": "NODE_ENV=development node server.js",
     "gen:docs": "node scripts/export-docs.js",
-    "test": "node -e 'console.log(\"No tests yet\")'"
+    "test": "node scripts/test.js",
+    "test:integration": "bash scripts/test-integration.sh"
   },
   "engines": {
-    "node": ">=18.18.0"
+    "node": "24.5.0"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",

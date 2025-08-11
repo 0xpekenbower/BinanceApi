@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log
+Dockerfile*
+.git
+.github
+*.md
+docs/*.tgz
+*.log
+*.local
+.env
