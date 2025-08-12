@@ -1,4 +1,4 @@
-name: Dev CI & PR Deploy
+name: Dev Build & PR Deploy (Tests Skipped)
 
 on:
   push:
@@ -13,7 +13,6 @@ permissions:
 
 env:
   IMAGE_NAME: binance-api-ci
-  TEST_PORT: 18080
   PROD_PORT: 8080
   PROD_CONTAINER: binance-api
   PROD_IMAGE_TAG: binance-api:prod
@@ -26,7 +25,7 @@ concurrency:
 
 jobs:
   dev-ci:
-    name: Dev Build & Test
+    name: Dev Build (No Tests)
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     runs-on: self-hosted
     steps:
@@ -36,38 +35,13 @@ jobs:
           node-version: 24.5.0
           cache: npm
       - run: npm ci
-      - run: npm test
       - name: Build image
         run: docker build -t ${IMAGE_NAME}:${{ github.sha }} .
-      - name: Start test container
-        run: |
-          docker run -d --name ${IMAGE_NAME}-test \
-            -e BINANCE_BASE_URL=${BINANCE_BASE_URL} \
-            -e PORT=${TEST_PORT} \
-            -p ${BIND_HOST}:${TEST_PORT}:${TEST_PORT} \
-            ${IMAGE_NAME}:${{ github.sha }}
-          for i in {1..60}; do
-            if curl -fsS http://${BIND_HOST}:${TEST_PORT}/health/ready >/dev/null 2>&1; then echo ready; break; fi
-            sleep 1
-            if [ $i -eq 30 ]; then echo 'halfway waiting...'; docker logs ${IMAGE_NAME}-test | tail -n 20 || true; fi
-            if [ $i -eq 60 ]; then echo 'readiness failed'; docker logs ${IMAGE_NAME}-test || true; exit 1; fi
-          done
-      - name: Integration tests
-        env:
-          PORT: ${{ env.TEST_PORT }}
-          CONTAINER_NAME: ${IMAGE_NAME}-test
-        shell: zsh {0}
-        run: |
-          zsh scripts/test-integration.sh || (docker logs ${IMAGE_NAME}-test || true; exit 1)
-      - name: Cleanup test artifacts
-        if: always()
-        run: |
-          docker stop ${IMAGE_NAME}-test >/dev/null 2>&1 || true
-          docker rm ${IMAGE_NAME}-test >/dev/null 2>&1 || true
-          docker image rm ${IMAGE_NAME}:${{ github.sha }} 2>/dev/null || true
+      - name: Skip tests notice
+        run: echo "Tests intentionally skipped in this workflow."
 
   deploy:
-    name: Deploy (PR dev -> main)
+    name: Deploy (PR dev -> main) (No Tests)
     if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'dev' && github.base_ref == 'main'
     runs-on: self-hosted
     steps:

@@ -211,6 +211,14 @@
         ],
         "url": "{{baseUrl}}/api/user-stream/listenKey"
       }
+    },
+    {
+      "name": "Service status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/"
+      }
     }
   ],
   "variable": [

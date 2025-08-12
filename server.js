@@ -1,6 +1,7 @@
 // Bootstrap Fastify app (ESM)
 import 'dotenv/config';
 import path from 'path';
+import fs from 'fs';
 import Fastify from 'fastify';
 import sensible from '@fastify/sensible';
 import helmet from '@fastify/helmet';
@@ -8,6 +9,7 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
+import { startMarketWatcher, stopMarketWatcher } from './src/app/marketWatcher.js';
 
 const buildApp = () => {
 	const app = Fastify({
@@ -33,7 +35,6 @@ const buildApp = () => {
 	return app;
 };
 
-// Register all plugins and routes (separated from build so tests can reuse)
 async function registerApp(app) {
 	await app.register(sensible);
 	await app.register(helmet, { contentSecurityPolicy: false });
@@ -97,8 +98,46 @@ async function start() {
 	const { port, host } = app.config.server;
 	try {
 		await app.ready();
+		// Auto-export OpenAPI + Postman collection
+		try {
+			const openapi = app.swagger();
+			const docsDir = path.join(process.cwd(), 'docs');
+			fs.mkdirSync(docsDir, { recursive: true });
+			const openapiPath = path.join(docsDir, 'openapi.json');
+			fs.writeFileSync(openapiPath, JSON.stringify(openapi, null, 2));
+			// Minimal Postman conversion (subset) similar to previous script
+			const collection = {
+				info: {
+					name: openapi.info?.title || 'API',
+					description: openapi.info?.description || '',
+					schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'
+				},
+				item: [],
+				variable: [
+					{ key: 'baseUrl', value: 'http://localhost:' + port },
+					{ key: 'BINANCE_API_KEY', value: '' }
+				]
+			};
+			const paths = openapi.paths || {};
+			for (const [route, methods] of Object.entries(paths)) {
+				for (const [method, op] of Object.entries(methods)) {
+					const name = op.summary || `${method.toUpperCase()} ${route}`;
+					const requiresKey = Array.isArray(op.security) && op.security.length > 0;
+					const headers = requiresKey ? [{ key: 'X-MBX-APIKEY', value: '{{BINANCE_API_KEY}}' }] : [];
+					collection.item.push({
+						name,
+						request: { method: method.toUpperCase(), header: headers, url: `{{baseUrl}}${route}` }
+					});
+				}
+			}
+			fs.writeFileSync(path.join(docsDir, 'postman-collection.json'), JSON.stringify(collection, null, 2));
+			app.log.info('Exported OpenAPI + Postman docs');
+		} catch (docErr) {
+			app.log.warn({ err: docErr }, 'Docs export failed');
+		}
 		await app.listen({ port, host });
 		app.log.info(`Docs available at http://${host}:${port}/docs`);
+		startMarketWatcher();
 	} catch (err) {
 		app.log.error(err);
 		process.exit(1);
