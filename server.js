@@ -1,16 +1,13 @@
-"use strict";
-
-// Bootstrap Fastify app
-require('dotenv').config();
-
-const path = require('path');
-const Fastify = require('fastify');
-const sensible = require('@fastify/sensible');
-const helmet = require('@fastify/helmet');
-const cors = require('@fastify/cors');
-const rateLimit = require('@fastify/rate-limit');
-const swagger = require('@fastify/swagger');
-const swaggerUI = require('@fastify/swagger-ui');
+// Bootstrap Fastify app (ESM)
+import 'dotenv/config';
+import path from 'path';
+import Fastify from 'fastify';
+import sensible from '@fastify/sensible';
+import helmet from '@fastify/helmet';
+import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
+import swagger from '@fastify/swagger';
+import swaggerUI from '@fastify/swagger-ui';
 
 const buildApp = () => {
 	const app = Fastify({
@@ -68,14 +65,14 @@ async function registerApp(app) {
 		uiConfig: { docExpansion: 'list', deepLinking: false },
 	});
 
-	await app.register(require('./src/plugins/binanceClient'));
-	await app.register(require('./src/plugins/errorHandling'));
+	await app.register((await import('./src/plugins/binanceClient.js')).default);
+	await app.register((await import('./src/plugins/errorHandling.js')).default);
 
-	await app.register(require('./src/routes/health'), { prefix: '/health' });
-	await app.register(require('./src/routes/market'), { prefix: '/api/market' });
-	await app.register(require('./src/routes/account'), { prefix: '/api/account' });
-	await app.register(require('./src/routes/trade'), { prefix: '/api/trade' });
-	await app.register(require('./src/routes/userStream'), { prefix: '/api/user-stream' });
+	await app.register((await import('./src/routes/health.js')).default, { prefix: '/health' });
+	await app.register((await import('./src/routes/market.js')).default, { prefix: '/api/market' });
+	await app.register((await import('./src/routes/account.js')).default, { prefix: '/api/account' });
+	await app.register((await import('./src/routes/trade.js')).default, { prefix: '/api/trade' });
+	await app.register((await import('./src/routes/userStream.js')).default, { prefix: '/api/user-stream' });
 
 	app.get('/', {
 		schema: {
@@ -108,8 +105,8 @@ async function start() {
 	}
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
 	start();
 }
 
-module.exports = { buildApp, registerApp };
+export { buildApp, registerApp };

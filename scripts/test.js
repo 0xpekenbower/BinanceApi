@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const { buildApp, registerApp } = require('../server');
+import { buildApp, registerApp } from '../server.js';
 
 async function main () {
   const app = buildApp();

@@ -43,18 +43,21 @@ jobs:
           docker run -d --rm \
             -e BINANCE_BASE_URL=${BINANCE_BASE_URL} \
             -e PORT=${TEST_PORT} \
-            -p ${BIND_HOST}:${TEST_PORT}:8080 \
+            -p ${BIND_HOST}:${TEST_PORT}:${TEST_PORT} \
             --name ${IMAGE_NAME}-test ${IMAGE_NAME}:${{ github.sha }}
-          for i in {1..40}; do
+          for i in {1..90}; do
             if curl -fsS http://${BIND_HOST}:${TEST_PORT}/health/ready >/dev/null 2>&1; then echo ready; break; fi
             sleep 1
-            if [ $i -eq 40 ]; then echo 'readiness failed'; docker logs ${IMAGE_NAME}-test || true; exit 1; fi
+            if [ $i -eq 45 ]; then echo 'halfway waiting...'; docker logs ${IMAGE_NAME}-test | tail -n 20 || true; fi
+            if [ $i -eq 90 ]; then echo 'readiness failed'; docker logs ${IMAGE_NAME}-test || true; exit 1; fi
           done
       - name: Integration tests
         env:
           PORT: ${{ env.TEST_PORT }}
           CONTAINER_NAME: ${IMAGE_NAME}-test
-        run: bash scripts/test-integration.sh || (docker logs ${IMAGE_NAME}-test || true; exit 1)
+        shell: zsh {0}
+        run: |
+          zsh scripts/test-integration.sh || (docker logs ${IMAGE_NAME}-test || true; exit 1)
       - if: always()
         run: docker image rm ${IMAGE_NAME}:${{ github.sha }} 2>/dev/null || true
 
@@ -82,7 +85,7 @@ jobs:
           docker tag "${NEW_IMAGE}" "${PROD_IMAGE_TAG}"
           docker run -d --restart=unless-stopped \
             --name ${PROD_CONTAINER} \
-            -p ${BIND_HOST}:${PROD_PORT}:8080 \
+            -p ${BIND_HOST}:${PROD_PORT}:${PROD_PORT} \
             -e BINANCE_BASE_URL=${BINANCE_BASE_URL} \
             -e PORT=${PROD_PORT} \
             -e BINANCE_API_KEY="$BINANCE_API_KEY" \

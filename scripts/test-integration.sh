@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env zsh
 set -euo pipefail
 
 PORT="${PORT:-8080}"
@@ -11,7 +11,21 @@ if [ ! -d node_modules ]; then
 fi
 
 echo "[integration] Running unit health tests"
-node scripts/test.js || UNIT_STATUS=$? || true
+UNIT_STATUS=0
+if command -v node >/dev/null 2>&1; then
+  node ./scripts/test.js || UNIT_STATUS=$? || true
+else
+  echo "[integration] 'node' not found on host PATH; attempting Docker-based test run" >&2
+  if command -v docker >/dev/null 2>&1; then
+    NODE_IMAGE="${NODE_IMAGE:-node:24.5.0-alpine}"
+    echo "[integration] Pulling ${NODE_IMAGE} (if needed) and running tests inside container" >&2
+    docker run --rm -v "$(dirname "$PWD")":/workspace -w /workspace "${NODE_IMAGE}" \
+      sh -c "npm ci >/dev/null 2>&1 || npm ci; node scripts/test.js" || UNIT_STATUS=$?
+  else
+    echo "[integration] Docker also not available; skipping unit tests (will mark as failure)" >&2
+    UNIT_STATUS=127
+  fi
+fi
 UNIT_STATUS=${UNIT_STATUS:-0}
 
 echo "[integration] Waiting for readiness (PORT=${PORT})..."
