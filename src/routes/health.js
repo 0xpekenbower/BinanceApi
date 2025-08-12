@@ -1,6 +1,4 @@
-"use strict";
-
-module.exports = async function (fastify) {
+export default async function (fastify) {
   fastify.get('/live', {
     schema: {
       tags: ['meta'],

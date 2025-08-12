@@ -1,8 +1,6 @@
-"use strict";
+import fp from 'fastify-plugin';
 
-const fp = require('fastify-plugin');
-
-module.exports = fp(async function errorHandling(fastify) {
+export default fp(async function errorHandling(fastify) {
   fastify.setErrorHandler((err, request, reply) => {
     const status = err.statusCode || 500;
     const code = err.code || 'INTERNAL_ERROR';

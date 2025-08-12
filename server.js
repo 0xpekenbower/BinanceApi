@@ -1,16 +1,13 @@
-"use strict";
-
-// Bootstrap Fastify app
-require('dotenv').config();
-
-const path = require('path');
-const Fastify = require('fastify');
-const sensible = require('@fastify/sensible');
-const helmet = require('@fastify/helmet');
-const cors = require('@fastify/cors');
-const rateLimit = require('@fastify/rate-limit');
-const swagger = require('@fastify/swagger');
-const swaggerUI = require('@fastify/swagger-ui');
+// Bootstrap Fastify app (ESM)
+import 'dotenv/config';
+import path from 'path';
+import Fastify from 'fastify';
+import sensible from '@fastify/sensible';
+import helmet from '@fastify/helmet';
+import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
+import swagger from '@fastify/swagger';
+import swaggerUI from '@fastify/swagger-ui';
 
 const buildApp = () => {
 	const app = Fastify({
@@ -21,7 +18,6 @@ const buildApp = () => {
 		trustProxy: true,
 	});
 
-	// Global decorators / config
 	app.decorate('config', {
 		binance: {
 			baseURL: process.env.BINANCE_BASE_URL || 'https://api.binance.com',
@@ -37,16 +33,13 @@ const buildApp = () => {
 	return app;
 };
 
-async function start() {
-	const app = buildApp();
-
-	// Plugins
+// Register all plugins and routes (separated from build so tests can reuse)
+async function registerApp(app) {
 	await app.register(sensible);
 	await app.register(helmet, { contentSecurityPolicy: false });
 	await app.register(cors, { origin: true, credentials: true });
 	await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
 
-	// Swagger
 	await app.register(swagger, {
 		openapi: {
 			info: {
@@ -72,17 +65,15 @@ async function start() {
 		uiConfig: { docExpansion: 'list', deepLinking: false },
 	});
 
-	// Internal plugins and routes
-	await app.register(require('./src/plugins/binanceClient'));
-	await app.register(require('./src/plugins/errorHandling'));
+	await app.register((await import('./src/plugins/binanceClient.js')).default);
+	await app.register((await import('./src/plugins/errorHandling.js')).default);
 
-	await app.register(require('./src/routes/health'), { prefix: '/health' });
-	await app.register(require('./src/routes/market'), { prefix: '/api/market' });
-	await app.register(require('./src/routes/account'), { prefix: '/api/account' });
-	await app.register(require('./src/routes/trade'), { prefix: '/api/trade' });
-	await app.register(require('./src/routes/userStream'), { prefix: '/api/user-stream' });
+	await app.register((await import('./src/routes/health.js')).default, { prefix: '/health' });
+	await app.register((await import('./src/routes/market.js')).default, { prefix: '/api/market' });
+	await app.register((await import('./src/routes/account.js')).default, { prefix: '/api/account' });
+	await app.register((await import('./src/routes/trade.js')).default, { prefix: '/api/trade' });
+	await app.register((await import('./src/routes/userStream.js')).default, { prefix: '/api/user-stream' });
 
-	// Root
 	app.get('/', {
 		schema: {
 			tags: ['meta'],
@@ -96,6 +87,13 @@ async function start() {
 		},
 	}, async () => ({ name: 'binance-service', status: 'ok' }));
 
+	return app;
+}
+
+async function start() {
+	const app = buildApp();
+	await registerApp(app);
+
 	const { port, host } = app.config.server;
 	try {
 		await app.ready();
@@ -107,8 +105,8 @@ async function start() {
 	}
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
 	start();
 }
 
-module.exports = { buildApp };
+export { buildApp, registerApp };

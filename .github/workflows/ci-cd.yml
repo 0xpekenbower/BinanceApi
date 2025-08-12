@@ -1,0 +1,110 @@
+name: Dev CI & PR Deploy
+
+on:
+  push:
+    branches: [ dev ]
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  IMAGE_NAME: binance-api-ci
+  TEST_PORT: 18080
+  PROD_PORT: 8080
+  PROD_CONTAINER: binance-api
+  PROD_IMAGE_TAG: binance-api:prod
+  BIND_HOST: 127.0.0.1
+  BINANCE_BASE_URL: https://api.binance.com
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dev-ci:
+    name: Dev Build & Test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.5.0
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Build image
+        run: docker build -t ${IMAGE_NAME}:${{ github.sha }} .
+      - name: Start test container
+        run: |
+          docker run -d --name ${IMAGE_NAME}-test \
+            -e BINANCE_BASE_URL=${BINANCE_BASE_URL} \
+            -e PORT=${TEST_PORT} \
+            -p ${BIND_HOST}:${TEST_PORT}:${TEST_PORT} \
+            ${IMAGE_NAME}:${{ github.sha }}
+          for i in {1..60}; do
+            if curl -fsS http://${BIND_HOST}:${TEST_PORT}/health/ready >/dev/null 2>&1; then echo ready; break; fi
+            sleep 1
+            if [ $i -eq 30 ]; then echo 'halfway waiting...'; docker logs ${IMAGE_NAME}-test | tail -n 20 || true; fi
+            if [ $i -eq 60 ]; then echo 'readiness failed'; docker logs ${IMAGE_NAME}-test || true; exit 1; fi
+          done
+      - name: Integration tests
+        env:
+          PORT: ${{ env.TEST_PORT }}
+          CONTAINER_NAME: ${IMAGE_NAME}-test
+        shell: zsh {0}
+        run: |
+          zsh scripts/test-integration.sh || (docker logs ${IMAGE_NAME}-test || true; exit 1)
+      - name: Cleanup test artifacts
+        if: always()
+        run: |
+          docker stop ${IMAGE_NAME}-test >/dev/null 2>&1 || true
+          docker rm ${IMAGE_NAME}-test >/dev/null 2>&1 || true
+          docker image rm ${IMAGE_NAME}:${{ github.sha }} 2>/dev/null || true
+
+  deploy:
+    name: Deploy (PR dev -> main)
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'dev' && github.base_ref == 'main'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image for production
+        run: docker build -t ${IMAGE_NAME}:${{ github.sha }} .
+      - name: Deploy container
+        env:
+          BINANCE_API_KEY: $BINANCE_API_KEY
+          BINANCE_API_SECRET: $BINANCE_API_SECRET
+        run: |
+          set -e
+          NEW_IMAGE=${IMAGE_NAME}:${{ github.sha }}
+          if docker ps -a --format '{{.Names}}' | grep -q "^${PROD_CONTAINER}$"; then
+            OLD_IMAGE_ID=$(docker inspect -f '{{.Image}}' ${PROD_CONTAINER} || true)
+            docker stop ${PROD_CONTAINER} || true
+            docker rm ${PROD_CONTAINER} || true
+          fi
+          docker tag "${NEW_IMAGE}" "${PROD_IMAGE_TAG}"
+          docker run -d --restart=unless-stopped \
+            --name ${PROD_CONTAINER} \
+            -p ${BIND_HOST}:${PROD_PORT}:${PROD_PORT} \
+            -e BINANCE_BASE_URL=${BINANCE_BASE_URL} \
+            -e PORT=${PROD_PORT} \
+            -e BINANCE_API_KEY="$BINANCE_API_KEY" \
+            -e BINANCE_API_SECRET="$BINANCE_API_SECRET" \
+            ${PROD_IMAGE_TAG}
+          # Optional quick readiness check (can be removed if not desired)
+          for i in {1..30}; do
+            if curl -fsS http://${BIND_HOST}:${PROD_PORT}/health/ready >/dev/null 2>&1; then echo prod ready; break; fi
+            sleep 1
+            if [ $i -eq 30 ]; then echo 'prod not ready (continuing anyway)'; break; fi
+          done
+          if [ -n "${OLD_IMAGE_ID}" ]; then
+            NEW_ID=$(docker inspect -f '{{.Image}}' ${PROD_CONTAINER})
+            if [ "${OLD_IMAGE_ID}" != "${NEW_ID}" ]; then docker image rm ${OLD_IMAGE_ID} || true; fi
+          fi
+      - name: Remove build image
+        if: always()
+        run: docker image rm ${IMAGE_NAME}:${{ github.sha }} 2>/dev/null || true

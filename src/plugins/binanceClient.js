@@ -1,8 +1,6 @@
-"use strict";
-
-const crypto = require('crypto');
-const axios = require('axios');
-const fp = require('fastify-plugin');
+import crypto from 'crypto';
+import axios from 'axios';
+import fp from 'fastify-plugin';
 
 function createSignature(secret, queryString) {
   return crypto.createHmac('sha256', secret).update(queryString).digest('hex');
@@ -15,7 +13,7 @@ function toQuery(params) {
     .join('&');
 }
 
-module.exports = fp(async function binanceClient(fastify) {
+export default fp(async function binanceClient(fastify) {
   const { baseURL, apiKey, apiSecret } = fastify.config.binance;
 
   const http = axios.create({
